@@ -1,0 +1,151 @@
+Dataset: https://archive.ics.uci.edu/ml/datasets/Wine
+
+About Data
+Number of Instances: 1599
+Number of Attributes: 11 + output attribute
+ Input variables (based on physicochemical tests):
+   1 - fixed acidity
+   2 - volatile acidity
+   3 - citric acid
+   4 - residual sugar
+   5 - chlorides
+   6 - free sulfur dioxide
+   7 - total sulfur dioxide
+   8 - density
+   9 - pH
+   10 - sulphates
+   11 - alcohol
+   Output variable (based on sensory data): 
+   12 - quality (score between 0 and 10)
+
+Logistic Regression - R 
+
+#load packages
+library(e1071)
+library(gmodels)
+source('C:/Users/~/QTM2000.R')
+
+# load the data
+df = read.csv("C:/Users/~/Main Data Set.csv")
+
+str(df)
+
+df$X..quality...= as.logical(df$X..quality...)
+df$X.fixed.acidity=NULL
+df$X..residual.sugar..=NULL
+df$X..density..=NULL
+df$X..citric.acid..=NULL
+df$X..pH..=NULL
+df$X..chlorides..=NULL
+
+#partition
+N = nrow(df) #Assign N to be total number of records (rows) in the frame
+trainingSize = round(N*0.8) #Assign trainingsize as 80% of the N (total)
+trainingCases = sample(N, trainingSize) #generates random sample size from N
+training = df[ trainingCases , ] #take the ones that are randomly generated out into training
+test = df[ -trainingCases,]
+
+#build model
+model = glm(X..quality...~., data=training, family=binomial(logit))
+baseModel = lm(X..quality...~ 1, data = training)
+backwardmodel = step(model, scope=list("lower" = baseModel), direction="backward")
+forwardmodel = step(baseModel, scope = list ("upper" = model), direction="forward")
+
+summary(model)
+
+#make predictions
+pred = predict(model, test, type = "response")
+predTF = (pred > 0.5)
+
+#create CrossTable
+CrossTable(predTF, test$X..quality..., expected=F, prop.r=F, prop.c=F, prop.t=F, prop.chisq=F)
+
+#error rates
+error_rate = sum(predTF!= test$X..quality...)/nrow(test)
+benchmarkErrorRate(training$X..quality..., test$X..quality...)
+
+
+Classification Tree Model - R
+
+#load packages
+library("rattle", lib.loc="~/R/win-library/3.3")
+library("rpart", lib.loc="~/R/win-library/3.3")
+library("arules", lib.loc="~/R/win-library/3.3")
+library("gmodels", lib.loc="~/R/win-library/3.3")
+
+#load and read data
+source("C:/Users/ckraus1/Dropbox/OurQTM2000/QTM2000.R")
+df <- read.csv("C:/Users/ckraus1/Desktop/Class Work/Yr 2/QTM 3/Project/Main Data Set.csv")
+
+#convert quality to a factor
+df$X..quality... = as.factor(df$X..quality...)
+
+#partition
+N = nrow(df)
+trainingSize =round(N*0.8)
+trainingCases = sample(N, trainingSize)
+training = df[trainingCases,]
+test = df[-trainingCases,]
+
+#create model and add stopping rules
+stoppingRules = rpart.control(minsplit=2, minbucket=1)
+model = rpart(X..quality... ~ ., data=training, control=stoppingRules)
+fancyRpartPlot(model, main="Full Model")
+
+#make predictions
+pred = predict (model, test, type = "class")
+CrossTable(pred, test$X..quality..., expected=F, prop.r=F, prop.c=F, prop.t=F, prop.chisq=F)
+
+#error rate
+error_rate = sum(pred!= test$X..quality...)/nrow(test)
+
+#prune tree
+pruned = easyPrune(model)
+fancyRpartPlot(pruned, main="Pruned")
+
+prunedpred = predict (pruned, test, type = "class")
+CrossTable(prunedpred, test$X..quality..., expected=F, prop.r=F, prop.c=F, prop.t=F, prop.chisq=F)
+pruned_error_rate = sum(prunedpred!= test$X..quality...)/nrow(test)
+
+
+KNN Model - R
+
+#load data
+Main.Data.Set.(Wine.Quality)` <- read.csv("~.csv")
+df = read.csv("/~/.csv")
+
+#partition
+N = nrow(df)
+trainingSize = round(N*0.8)
+trainingCases = sample(N,trainingSize)
+training = df[trainingCases,]
+test = df[-trainingCases,]
+
+#standardize data
+stanTraining = easyStandardize(training, c(1,2,3,4,5,6,7,8,9,10,11))
+stanTest = easyStandardize(test,c(1,2,3,4,5,6,7,8,9,10,11))
+
+#make predictions and error rate
+pred = knn(stanTraining, stanTest, stanTraining$X..quality..., k = 5)
+error_rate = sum(pred !=test$X..quality...)/nrow(test)
+
+pred = knn(stanTraining, stanTest, stanTraining$X..quality..., k = 4)
+error_rate2 = sum(pred !=stanTest$X..quality...)/nrow(test)
+
+pred = knn(stanTraining, stanTest, stanTraining$X..quality..., k = 3)
+error_rate3 = sum(pred !=stanTest$X..quality...)/nrow(test)
+
+pred = knn(stanTraining, stanTest, stanTraining$X..quality..., k = 2)
+error_rate4 = sum(pred !=stanTest$X..quality...)/nrow(test)
+
+pred = knn(stanTraining, stanTest, stanTraining$X..quality..., k = 1)
+error_rate5 = sum(pred !=stanTest$X..quality...)/nrow(test)
+
+resultsTable = CrossTable(pred, stanTest$X..quality..., expected=F, prop.r=F, prop.c=F, prop.t=F, prop.chisq=F)
+benchmarkErrorRate(stanTraining$X..quality...,stanTest$X..quality...)
+
+
+
+
+
+
